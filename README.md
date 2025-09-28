@@ -51,23 +51,22 @@ Copy code
 - **Other**: python-dotenv, requests (for Telegram helper)
 
 ## Getting Started (Local)
-```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# configure your .env (see template)
+# configure your .env (see template below)
 cd backend
 python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:8000
-Environment Variables
+
+## Environment Variables
+
 Copy .env.sample to .env and fill in as needed:
 
-dotenv
-Copy code
 DJANGO_SECRET_KEY=change-me
 DJANGO_DEBUG=1
 DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
@@ -91,26 +90,28 @@ FRONTEND_SUCCESS_URL=http://localhost:8000/api/payments/success/
 FRONTEND_CANCEL_URL=http://localhost:8000/api/payments/cancel/
 
 FINE_MULTIPLIER=2
-Run with Docker
-bash
-Copy code
+
+## Run with Docker
 docker compose up --build
+
+
 API: http://localhost:8000/api/
 
 Swagger: http://localhost:8000/api/docs/
 
-Migrations & Admin
-bash
-Copy code
+## Migrations & Admin
 # inside the web container (if needed)
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
+
 API Docs
+
 Swagger UI: GET /api/docs/
 
 OpenAPI schema: GET /api/schema/
 
 Authentication
+
 Register: POST /api/users/
 
 Obtain tokens: POST /api/users/token/
@@ -121,11 +122,11 @@ Me: GET/PUT/PATCH /api/users/me/
 
 Send JWT in headers:
 
-makefile
-Copy code
 Authorization: Bearer <ACCESS_TOKEN>
-Endpoints Overview
-Books
+
+## Endpoints Overview
+# Books
+
 GET /api/books/ — public list
 
 GET /api/books/{id}/ — public detail
@@ -134,7 +135,8 @@ POST /api/books/ — staff only
 
 PUT/PATCH/DELETE /api/books/{id}/ — staff only
 
-Borrowings
+# Borrowings
+
 GET /api/borrowings/?is_active=true|false&user_id=<id>
 Non-staff see only their borrowings; user_id is staff-only.
 
@@ -144,16 +146,18 @@ POST /api/borrowings/ — validate stock, inventory -= 1, create Stripe payment 
 
 POST /api/borrowings/{id}/return/ — forbid double return, inventory += 1, create fine if overdue
 
-Payments
+# Payments
+
 GET /api/payments/ — non-staff see only their payments
 
 GET /api/payments/{id}/
 
-GET /api/payments/success/?session_id=... — mark as PAID if Stripe says so
+GET /api/payments/success/?session_id=... — mark as PAID if Stripe confirms
 
 GET /api/payments/cancel/ — info message (session ~24h)
 
-Payment Flow (Stripe)
+## Payment Flow (Stripe)
+
 User creates a borrowing → backend calculates base price (days * daily_fee) and creates a Stripe Checkout Session.
 
 The system stores session_id and session_url in a related Payment record (type=PAYMENT).
@@ -164,15 +168,15 @@ Stripe redirects to /api/payments/success/?session_id=...; backend marks Payment
 
 If the borrowing is returned after expected_return_date, a Payment of type FINE is created:
 
-ini
-Copy code
 fine = overdue_days * daily_fee * FINE_MULTIPLIER
-Testing
+
+## Testing
+
 Use pytest + pytest-django:
 
-bash
-Copy code
 pytest --cov=backend --cov-report=term-missing
+
+
 Recommended test coverage (custom code) ≥ 60%:
 
 Users: register/token/me flows
@@ -183,21 +187,22 @@ Borrowings: create (decrement stock, forbid when inventory=0), list filters, ret
 
 Payments: list/detail permissions; success marks PAID
 
-Code Style & Comments
+## Code Style & Comments
+
 All code comments must be in English.
 
 Recommended tools: flake8, black.
 
 Keep secrets out of Git: use .env and publish .env.sample.
 
-Troubleshooting
+## Troubleshooting
+
 CORS errors: add your frontend origin in CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS.
 
 401 Unauthorized: send Authorization: Bearer <token>.
 
 DB connection: verify Postgres env vars when running via Docker.
 
-License
-MIT (or your preferred license).
+## License
 
-yaml
+MIT (or your preferred license).
