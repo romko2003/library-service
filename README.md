@@ -29,7 +29,6 @@ An online library management system: books inventory, customer borrowings, payme
 - **Docker**: Dockerfile + docker-compose for easy run.
 
 ## Architecture
-
 repo/
 ├─ .env.sample
 ├─ requirements.txt
@@ -41,6 +40,9 @@ repo/
 ├─ books/ # models/serializers/views/urls
 ├─ borrowings/ # models/serializers/filters/views/urls
 └─ payments/ # models/stripe utils/views/urls
+
+markdown
+Copy code
 
 ## Tech Stack
 - **Backend**: Django 5, DRF, django-filter, SimpleJWT, drf-spectacular
@@ -61,11 +63,11 @@ python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:8000
-
 Environment Variables
-
 Copy .env.sample to .env and fill in as needed:
 
+dotenv
+Copy code
 DJANGO_SECRET_KEY=change-me
 DJANGO_DEBUG=1
 DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
@@ -89,28 +91,26 @@ FRONTEND_SUCCESS_URL=http://localhost:8000/api/payments/success/
 FRONTEND_CANCEL_URL=http://localhost:8000/api/payments/cancel/
 
 FINE_MULTIPLIER=2
-
 Run with Docker
+bash
+Copy code
 docker compose up --build
-
-
 API: http://localhost:8000/api/
 
-Swagger: http://localhost:8000/api/docs
+Swagger: http://localhost:8000/api/docs/
 
 Migrations & Admin
+bash
+Copy code
 # inside the web container (if needed)
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
-
 API Docs
-
 Swagger UI: GET /api/docs/
 
 OpenAPI schema: GET /api/schema/
 
 Authentication
-
 Register: POST /api/users/
 
 Obtain tokens: POST /api/users/token/
@@ -121,11 +121,11 @@ Me: GET/PUT/PATCH /api/users/me/
 
 Send JWT in headers:
 
+makefile
+Copy code
 Authorization: Bearer <ACCESS_TOKEN>
-
 Endpoints Overview
 Books
-
 GET /api/books/ — public list
 
 GET /api/books/{id}/ — public detail
@@ -135,7 +135,6 @@ POST /api/books/ — staff only
 PUT/PATCH/DELETE /api/books/{id}/ — staff only
 
 Borrowings
-
 GET /api/borrowings/?is_active=true|false&user_id=<id>
 Non-staff see only their borrowings; user_id is staff-only.
 
@@ -146,7 +145,6 @@ POST /api/borrowings/ — validate stock, inventory -= 1, create Stripe payment 
 POST /api/borrowings/{id}/return/ — forbid double return, inventory += 1, create fine if overdue
 
 Payments
-
 GET /api/payments/ — non-staff see only their payments
 
 GET /api/payments/{id}/
@@ -156,7 +154,6 @@ GET /api/payments/success/?session_id=... — mark as PAID if Stripe says so
 GET /api/payments/cancel/ — info message (session ~24h)
 
 Payment Flow (Stripe)
-
 User creates a borrowing → backend calculates base price (days * daily_fee) and creates a Stripe Checkout Session.
 
 The system stores session_id and session_url in a related Payment record (type=PAYMENT).
@@ -167,15 +164,15 @@ Stripe redirects to /api/payments/success/?session_id=...; backend marks Payment
 
 If the borrowing is returned after expected_return_date, a Payment of type FINE is created:
 
+ini
+Copy code
 fine = overdue_days * daily_fee * FINE_MULTIPLIER
-
 Testing
-
 Use pytest + pytest-django:
 
+bash
+Copy code
 pytest --cov=backend --cov-report=term-missing
-
-
 Recommended test coverage (custom code) ≥ 60%:
 
 Users: register/token/me flows
@@ -187,7 +184,6 @@ Borrowings: create (decrement stock, forbid when inventory=0), list filters, ret
 Payments: list/detail permissions; success marks PAID
 
 Code Style & Comments
-
 All code comments must be in English.
 
 Recommended tools: flake8, black.
@@ -195,7 +191,6 @@ Recommended tools: flake8, black.
 Keep secrets out of Git: use .env and publish .env.sample.
 
 Troubleshooting
-
 CORS errors: add your frontend origin in CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS.
 
 401 Unauthorized: send Authorization: Bearer <token>.
@@ -203,30 +198,6 @@ CORS errors: add your frontend origin in CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_O
 DB connection: verify Postgres env vars when running via Docker.
 
 License
-
 MIT (or your preferred license).
 
-
----
-
-# 🗂 3) Remove `.idea` from GitHub & ignore it
-
-Add to your **root** `.gitignore`:
-```gitignore
-# IDE
-.idea/
-.vscode/
-
-
-Remove .idea from the repo history (cached index) and commit:
-
-git rm -r --cached .idea
-git add .gitignore
-git commit -m "chore: ignore .idea and remove from repo"
-git push
-
-⬆️ 4) Make sure all files are pushed
-git add -A
-git commit -m "feat: docker support + docs + tests scaffolding"
-git push origin <your-branch>
-# then open a PR to main
+yaml
