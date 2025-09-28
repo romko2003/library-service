@@ -61,7 +61,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "library.wsgi.application"
 
-# Database: якщо DB_HOST не заданий — SQLite
 if os.getenv("DB_HOST"):
     DATABASES = {
         "default": {
@@ -119,7 +118,6 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# CORS/CSRF (якщо є фронтенд)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -130,5 +128,4 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
 ]
 
-# Штрафи
 FINE_MULTIPLIER = int(os.getenv("FINE_MULTIPLIER", "2"))

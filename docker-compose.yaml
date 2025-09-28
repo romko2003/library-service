@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   db:
     image: postgres:16
@@ -6,18 +7,24 @@ services:
       POSTGRES_DB: ${DB_NAME:-library}
       POSTGRES_USER: ${DB_USER:-library}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-library}
-    ports: ["5432:5432"]
-    volumes: [db_data:/var/lib/postgresql/data]
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
 
   web:
-    build: ./backend
+    build:
+      context: ./backend
     env_file: .env
-    volumes: ["./backend:/app"]
+    volumes:
+      - ./backend:/app
     command: >
       sh -c "python manage.py migrate &&
              gunicorn library.wsgi:application --bind 0.0.0.0:8000 --workers 3"
-    depends_on: [db]
-    ports: ["8000:8000"]
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
 
 volumes:
   db_data:
