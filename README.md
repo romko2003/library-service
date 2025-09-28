@@ -1,313 +1,203 @@
-Library Service (Django REST)
+# Library Service (Django REST)
 
-Онлайн-сервіс для керування бібліотекою: книги, користувачі, позики (borrowings), платежі (Stripe), прострочки та (опційно) нотифікації в Telegram. API самодокументований (Swagger), підтримує JWT-автентифікацію та фільтри.
+An online library management system: books inventory, customer borrowings, payments (Stripe), fines for overdue returns, and optional Telegram notifications. The API is self-documented (Swagger) and protected with JWT. Docker support is included.
 
-🚀 Функціонал
+## Table of Contents
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started (Local)](#getting-started-local)
+- [Environment Variables](#environment-variables)
+- [Run with Docker](#run-with-docker)
+- [Migrations & Admin](#migrations--admin)
+- [API Docs](#api-docs)
+- [Authentication](#authentication)
+- [Endpoints Overview](#endpoints-overview)
+- [Payment Flow (Stripe)](#payment-flow-stripe)
+- [Testing](#testing)
+- [Code Style & Comments](#code-style--comments)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-Users: реєстрація, JWT токени, профіль /me
+## Features
+- **Users**: registration, JWT tokens, `/me` endpoint.
+- **Books**: CRUD with permissions (only staff can create/update/delete).
+- **Borrowings**: create borrowing (decreases inventory), list/detail with filters, return borrowing (increases inventory, fine if overdue).
+- **Payments (Stripe)**: Checkout Session created on borrowing; success/cancel endpoints; list/detail payments.
+- **Fines**: `overdue_days * daily_fee * FINE_MULTIPLIER`.
+- **Docs**: OpenAPI/Swagger via `/api/docs/`.
+- **Docker**: Dockerfile + docker-compose for easy run.
 
-Books: CRUD із правами доступу (лише адмін може створювати/редагувати/видаляти)
-
-Borrowings: створення позики (зменшує інвентар), список/деталі з фільтрами, повернення (збільшує інвентар, нарахування штрафу при прострочці)
-
-Payments (Stripe): створення сесії оплати при позичанні, success/cancel ендпоїнти, список/деталі платежів
-
-Fines: штраф за прострочку = days_overdue * daily_fee * FINE_MULTIPLIER
-
-Docs: OpenAPI/Swagger за адресою /api/docs/
-
-(Опційно): Нотифікації в Telegram про нові позики / прострочки
-
-🧱 Технології
-
-Backend: Django 5, DRF, django-filter, SimpleJWT, drf-spectacular
-
-Payments: Stripe (test mode)
-
-Infra (опц.): Docker, docker-compose, Postgres
-
-Інше: python-dotenv, requests (Telegram)
-
-📦 Структура
-library_service/
+## Architecture
+repo/
 ├─ .env.sample
 ├─ requirements.txt
 ├─ docker-compose.yml
 └─ backend/
-   ├─ manage.py
-   ├─ library/         # settings/urls/asgi/wsgi
-   ├─ users/           # кастомний User + auth
-   ├─ books/           # моделі/серіали/в’ю/urls
-   ├─ borrowings/      # моделі/серіали/фільтри/в’ю/urls
-   └─ payments/        # моделі/stripe utils/views/urls
+├─ manage.py
+├─ library/ # settings/urls/asgi/wsgi
+├─ users/ # custom user + auth
+├─ books/ # models/serializers/views/urls
+├─ borrowings/ # models/serializers/filters/views/urls
+└─ payments/ # models/stripe utils/views/urls
 
-⚙️ Встановлення та запуск (локально)
+markdown
+Copy code
 
-Python env
+## Tech Stack
+- **Backend**: Django 5, DRF, django-filter, SimpleJWT, drf-spectacular
+- **Payments**: Stripe (test mode)
+- **Infra**: Docker, docker-compose, PostgreSQL (or SQLite for local)
+- **Other**: python-dotenv, requests (for Telegram helper)
 
+## Getting Started (Local)
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-
-Сконфігуруй .env (скопіюй із .env.sample)
-
-DJANGO_SECRET_KEY=change-me
-DJANGO_DEBUG=1
-DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
-# SQLite за замовчуванням (залиши DB_HOST порожнім)
-# Для Postgres через Docker — заповни DB_HOST, DB_NAME, DB_USER, DB_PASSWORD
-
-ACCESS_MINUTES=60
-REFRESH_DAYS=1
-
-API_TITLE=Library API
-API_VERSION=1.0.0
-
-# Stripe (TEST)
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-FRONTEND_SUCCESS_URL=http://localhost:8000/api/payments/success/
-FRONTEND_CANCEL_URL=http://localhost:8000/api/payments/cancel/
-
-FINE_MULTIPLIER=2
-
-
-Міграції та суперкористувач
-
+# configure your .env (see template)
 cd backend
 python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
-
-
-Запуск
-
 python manage.py runserver 0.0.0.0:8000
+Environment Variables
+Copy .env.sample to .env and fill in as needed:
 
+dotenv
+Copy code
+DJANGO_SECRET_KEY=change-me
+DJANGO_DEBUG=1
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 
-Swagger: http://localhost:8000/api/docs/
-
-Schema (json): http://localhost:8000/api/schema/
-
-🐳 Запуск у Docker (опціонально, Postgres)
-docker compose up --build
-
-
-API: http://localhost:8000/api/
-
-Перевір або онови змінні БД у .env:
-
+# For SQLite leave DB_HOST empty; for Postgres via Docker set:
 DB_NAME=library
 DB_USER=library
 DB_PASSWORD=library
 DB_HOST=db
 DB_PORT=5432
 
-🔐 Автентифікація (JWT)
+ACCESS_MINUTES=60
+REFRESH_DAYS=1
+API_TITLE=Library API
+API_VERSION=1.0.0
 
-Реєстрація: POST /api/users/
+# Stripe (TEST only)
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+FRONTEND_SUCCESS_URL=http://localhost:8000/api/payments/success/
+FRONTEND_CANCEL_URL=http://localhost:8000/api/payments/cancel/
 
-{ "email": "a@a.com", "password": "12345", "first_name":"A", "last_name":"A" }
+FINE_MULTIPLIER=2
+Run with Docker
+bash
+Copy code
+docker compose up --build
+API: http://localhost:8000/api/
 
+Swagger: http://localhost:8000/api/docs/
 
-Отримати токени: POST /api/users/token/
+Migrations & Admin
+bash
+Copy code
+# inside the web container (if needed)
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
+API Docs
+Swagger UI: GET /api/docs/
 
-{ "email": "a@a.com", "password": "12345" }
+OpenAPI schema: GET /api/schema/
 
+Authentication
+Register: POST /api/users/
 
-Відповідь: { "access": "...", "refresh": "..." }
+Obtain tokens: POST /api/users/token/
 
-Оновити: POST /api/users/token/refresh/
+Refresh tokens: POST /api/users/token/refresh/
 
-Мій профіль: GET/PUT/PATCH /api/users/me/
+Me: GET/PUT/PATCH /api/users/me/
 
-У приватні запити додавати заголовок:
+Send JWT in headers:
 
+makefile
+Copy code
 Authorization: Bearer <ACCESS_TOKEN>
-
-📚 Ендпоїнти
-Users
-
-POST /api/users/ — реєстрація
-
-POST /api/users/token/ — отримати JWT
-
-POST /api/users/token/refresh/ — оновити JWT
-
-GET/PUT/PATCH /api/users/me/ — профіль поточного користувача
-
+Endpoints Overview
 Books
+GET /api/books/ — public list
 
-GET /api/books/ — список (доступний усім, навіть без JWT)
+GET /api/books/{id}/ — public detail
 
-GET /api/books/{id}/ — деталі (усім)
+POST /api/books/ — staff only
 
-POST /api/books/ — створити (лише staff)
-
-PUT/PATCH/DELETE /api/books/{id}/ — змінити/видалити (лише staff)
+PUT/PATCH/DELETE /api/books/{id}/ — staff only
 
 Borrowings
+GET /api/borrowings/?is_active=true|false&user_id=<id>
+Non-staff see only their borrowings; user_id is staff-only.
 
-GET /api/borrowings/ — список
+GET /api/borrowings/{id}/
 
-Не-адмін бачить лише свої
+POST /api/borrowings/ — validate stock, inventory -= 1, create Stripe payment session
 
-Параметри:
-
-is_active=true|false
-
-user_id=<id> (лише staff)
-
-GET /api/borrowings/{id}/ — деталі
-
-POST /api/borrowings/ — створити позику
-
-Валідація: book.inventory > 0
-
-Логіка: inventory -= 1, створюється Payment (PAYMENT) + Stripe Session
-
-POST /api/borrowings/{id}/return/ — повернути
-
-Заборонено повертати двічі
-
-Логіка: inventory += 1
-
-Якщо прострочено → створюється Payment (FINE) + Stripe Session
+POST /api/borrowings/{id}/return/ — forbid double return, inventory += 1, create fine if overdue
 
 Payments
+GET /api/payments/ — non-staff see only their payments
 
-GET /api/payments/ — список платежів
+GET /api/payments/{id}/
 
-Не-адмін бачить лише свої
+GET /api/payments/success/?session_id=... — mark as PAID if Stripe says so
 
-GET /api/payments/{id}/ — деталі платежу
+GET /api/payments/cancel/ — info message (session ~24h)
 
-GET /api/payments/success/?session_id=... — відзначити як PAID (Stripe перенаправляє сюди)
+Payment Flow (Stripe)
+User creates a borrowing → backend calculates base price (days * daily_fee) and creates a Stripe Checkout Session.
 
-GET /api/payments/cancel/ — інформує, що можна оплатити пізніше (сесія ~24h)
+The system stores session_id and session_url in a related Payment record (type=PAYMENT).
 
-💳 Потік оплати (Stripe, TEST)
+User pays on Stripe (test card like 4242 4242 4242 4242).
 
-Користувач створює Borrowing → бекенд рахує ціну за дні (days * daily_fee) та створює Stripe Checkout Session.
+Stripe redirects to /api/payments/success/?session_id=...; backend marks Payment as PAID.
 
-У відповідь Borrowing “пов’язаний” із Payment (type=PAYMENT) і має session_url.
+If the borrowing is returned after expected_return_date, a Payment of type FINE is created:
 
-Користувач переходить за session_url, проводить тестову оплату карткою (наприклад, 4242 4242 4242 4242).
+ini
+Copy code
+fine = overdue_days * daily_fee * FINE_MULTIPLIER
+Testing
+Use pytest + pytest-django:
 
-Після оплати Stripe перенаправить на /api/payments/success/?session_id=... → бекенд відмітить PAID.
-
-При поверненні простроченої позики створюється Payment type=FINE з сумою:
-
-money_to_pay = overdue_days * daily_fee * FINE_MULTIPLIER
-
-🧪 Приклади curl
-# Реєстрація
-curl -X POST http://localhost:8000/api/users/ \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"12345"}'
-
-# Токен
-curl -X POST http://localhost:8000/api/users/token/ \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"12345"}'
-
-# Книги (список)
-curl http://localhost:8000/api/books/
-
-# Створити позику (потрібен токен)
-curl -X POST http://localhost:8000/api/borrowings/ \
-  -H "Authorization: Bearer <ACCESS>" \
-  -H "Content-Type: application/json" \
-  -d '{"book": 1, "expected_return_date": "2025-10-05"}'
-
-# Повернути позику
-curl -X POST http://localhost:8000/api/borrowings/1/return/ \
-  -H "Authorization: Bearer <ACCESS>"
-
-🧰 Ролі та доступ
-
-Anonymous:
-
-GET /api/books/, GET /api/books/{id}/
-
-Swagger / schema
-
-User (JWT):
-
-Свої Borrowings/Payments
-
-Створення Borrowing
-
-Повернення власних Borrowings
-
-Staff:
-
-CRUD Books
-
-Перегляд Borrowings/Payments будь-якого користувача (user_id фільтр)
-
-📝 Документація
-
-Swagger UI: /api/docs/
-
-OpenAPI schema: /api/schema/
-
-Під час зміни/додавання ендпоїнтів — стеж, щоб схему можна було побудувати без помилок.
-
-🧪 Тестування (рекомендації)
-
-Набір інструментів у requirements.txt: pytest, pytest-django, pytest-cov
-
-Ціль покриття для кастомної логіки: 60%+
-
-Рекомендовані кейси:
-
-Users: register/token/me
-
-Books: list (public), create/update (staff only)
-
-Borrowings:
-
-create: inventory зменшується; заборона при inventory=0
-
-list: user бачить лише свої; admin — усіх; фільтри is_active, user_id
-
-return: захист від повторного; inventory збільшується; FINE при прострочці
-
-Payments: list/detail власних платежів; success змінює статус на PAID
-
-Запуск:
-
+bash
+Copy code
 pytest --cov=backend --cov-report=term-missing
+Recommended test coverage (custom code) ≥ 60%:
 
-🔔 Telegram (опційно)
+Users: register/token/me flows
 
-Заповни у .env:
+Books: public GETs; staff-only create/update/delete
 
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=...
+Borrowings: create (decrement stock, forbid when inventory=0), list filters, return (forbid double, increment stock, fine on overdue)
 
+Payments: list/detail permissions; success marks PAID
 
-І викликай хелпер notifications.telegram.send_message("text") з потрібних місць (створення Borrowing, успішний Payment, щоденна перевірка прострочених — якщо додаси Celery/Django-Q).
+Code Style & Comments
+All code comments must be in English.
 
-🧭 Workflows (рекомендації під завдання)
+Recommended tools: flake8, black.
 
-Гілка/PR на кожну задачу, осмислені назви гілок і комітів.
+Keep secrets out of Git: use .env and publish .env.sample.
 
-Для командної роботи увімкни обовʼязкові ревʼю перед мерджем (2 approvals).
+Troubleshooting
+CORS errors: add your frontend origin in CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS.
 
-Не зберігай секрети в гіті. Додай .env.sample і користуйся .env локально/на сервері.
+401 Unauthorized: send Authorization: Bearer <token>.
 
-📜 Ліцензія
+DB connection: verify Postgres env vars when running via Docker.
 
-MIT (або інша, за потреби проєкту).
+License
+MIT (or your preferred license).
 
-Notes
-
-Stripe використовуй лише в тестовому режимі.
-
-Для продакшену додай Reverse Proxy (Nginx), HTTPS, безпечні кукі тощо.
-
-Якщо підключатимеш фронтенд — увімкни CORS у settings.py (вже додано) та додай CSRF_TRUSTED_ORIGINS за потреби.
+yaml
